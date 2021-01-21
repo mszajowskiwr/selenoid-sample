@@ -2,6 +2,7 @@ package org.selenide.examples.selenoid;
 
 import com.codeborne.selenide.Configuration;
 import com.codeborne.selenide.FileDownloadMode;
+import com.codeborne.selenide.WebDriverRunner;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.openqa.selenium.remote.DesiredCapabilities;
@@ -42,5 +43,6 @@ public class FileDownloadTest {
 
     assertThat(file.getName()).isEqualTo("some-file.txt");
     assertThat(readFileToString(file, UTF_8)).startsWith("{\\rtf");
+    assertThat(WebDriverRunner.getBrowserDownloadsFolder()).isNotNull();
   }
 }
