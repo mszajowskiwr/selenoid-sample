@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+
+<body>
+    <div id=title></div>
+    <script>
+        if (document.referrer) {
+            document.getElementById("title").innerHTML = "This is page that's been navigated to from " + document.referrer;
+        } else {
+            document.getElementById("title").innerHTML = "This is freshly opened page";
+        }
+    </script>
+    <br/>
+    <br/>
+    <div>Best to host this file via: <pre>ruby -run -e httpd . -p 8888</pre></div>
+    <a href="./index.html" id=downloadable download>this is download</a><br/>
+    <a href="./index.html" id=navigable >this is navigable</a><br/>
+
+</body>

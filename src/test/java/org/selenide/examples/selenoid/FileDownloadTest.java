@@ -2,47 +2,131 @@ package org.selenide.examples.selenoid;
 
 import com.codeborne.selenide.Configuration;
 import com.codeborne.selenide.FileDownloadMode;
+import com.codeborne.selenide.Selenide;
+import com.codeborne.selenide.SelenideElement;
 import com.codeborne.selenide.WebDriverRunner;
+import org.apache.commons.io.FileUtils;
+import org.apache.commons.io.IOUtils;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.openqa.selenium.remote.DesiredCapabilities;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
+import java.util.List;
+import java.util.stream.Collectors;
 
-import static com.codeborne.selenide.Selectors.byText;
+import static com.codeborne.selenide.Condition.text;
 import static com.codeborne.selenide.Selenide.$;
-import static com.codeborne.selenide.Selenide.open;
-import static com.codeborne.selenide.files.FileFilters.withExtension;
-import static java.nio.charset.StandardCharsets.UTF_8;
-import static org.apache.commons.io.FileUtils.readFileToString;
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class FileDownloadTest {
-  @BeforeEach
-  void setUp() {
-    Configuration.remote = "http://localhost:4444/wd/hub";
-    Configuration.fileDownload = FileDownloadMode.FOLDER;
-    Configuration.reportsFolder = "target/surefire-reports";
-    Configuration.downloadsFolder = "target/downloads";
 
-    DesiredCapabilities capabilities = new DesiredCapabilities();
-    capabilities.setBrowserName("chrome");
-    capabilities.setVersion("86.0");
-    capabilities.setCapability("enableVNC", true);
-    capabilities.setCapability("enableVideo", true);
-    capabilities.setCapability("enableLog", true);
-    Configuration.browserCapabilities = capabilities;
-  }
+    SelenideElement downloadable = $("#downloadable");
+    SelenideElement navigable = $("#navigable");
+    SelenideElement title = $("#title");
 
-  @Test
-  void download() throws IOException {
-    open("https://the-internet.herokuapp.com/download");
+    private static String getStdOutputOf(String commandStr) throws IOException {
+        Process process = Runtime.getRuntime().exec(String.format(commandStr));
+        String output = IOUtils.toString(process.getInputStream(), StandardCharsets.UTF_8.name());
+        return output;
+    }
 
-    File file = $(byText("some-file.txt")).download(withExtension("txt"));
+    @BeforeAll
+    static void setUpAll() {
+        Configuration.baseUrl = "http://10.0.0.70:8888/"; // please replace this with your local IP and port
+    }
 
-    assertThat(file.getName()).isEqualTo("some-file.txt");
-    assertThat(readFileToString(file, UTF_8)).startsWith("{\\rtf");
-    assertThat(WebDriverRunner.getBrowserDownloadsFolder()).isNotNull();
-  }
+    @BeforeEach
+    void setUp() throws IOException {
+        FileUtils.deleteDirectory(new File("./build/"));
+    }
+
+    @AfterEach
+    void tearDown() {
+        WebDriverRunner.getWebDriver().close();
+    }
+
+    @Test
+    void thisWorks() throws IOException, InterruptedException {
+        disableSelenoid();
+        oneDownload(); // passes
+    }
+
+    @Test
+    void thisAlsoWorks() throws IOException, InterruptedException {
+        disableSelenoid();
+        twoDownloads(); // passes
+    }
+
+    @Test
+    void thisDoesntWork() throws IOException, InterruptedException {
+        enableSelenoid();
+        oneDownload(); // this will end with java.lang.AssertionError: Expected size:<1> but was:<0>
+
+    }
+
+    @Test
+    void thisAlsoDoesntWork() throws IOException, InterruptedException {
+        enableSelenoid();
+        twoDownloads(); // java.io.FileNotFoundException: Failed to download file {#navigable} in 4000 ms.
+    }
+
+    void oneDownload() throws IOException, InterruptedException {
+
+        Selenide.open("");
+        title.shouldHave(text("This is freshly opened page"));
+
+        downloadable.click(); // this triggers downloading
+        title.shouldHave(text("This is freshly opened page")); // we're still on the same page
+
+        navigable.click();  // this triggers navigating
+        title.shouldHave(text("This is page that's been navigated to")); // new page has been navigated to
+
+        List<String> downloadedFiles = Arrays.stream(getStdOutputOf("find build -name index.html").split("\n"))
+                .filter(s -> !s.isEmpty())
+                .collect(Collectors.toList());
+
+        // we expect 1 file to be downloaded
+        assertThat(downloadedFiles).hasSize(1);
+    }
+
+    void twoDownloads() throws IOException, InterruptedException {
+
+        Selenide.open("");
+        title.shouldHave(text("This is freshly opened page"));
+
+        downloadable.click(); // this triggers downloading
+        title.shouldHave(text("This is freshly opened page")); // we're still on the same page
+
+        navigable.download(); // this triggers downloading, NOTE: this is navigable link!
+        title.shouldHave(text("This is freshly opened page")); // we're still on the same page
+
+        navigable.click();  // this triggers navigating
+        title.shouldHave(text("This is page that's been navigated to")); // new page has been navigated to
+
+        List<String> downloadedFiles = Arrays.stream(getStdOutputOf("find build -name index.html").split("\n"))
+                .filter(s -> !s.isEmpty())
+                .collect(Collectors.toList());
+
+        // we expect 2 files to be downloaded, one via downloadable.click(), the other via navigable.download()
+        assertThat(downloadedFiles).hasSize(2);
+    }
+
+    private void enableSelenoid() {
+        Configuration.remote = "http://localhost:4444/wd/hub";
+        Configuration.fileDownload = FileDownloadMode.FOLDER;  // as mentioned in https://github.com/selenide/selenide-selenoid#usage
+        Configuration.downloadsFolder = "build/downloads";
+    }
+
+    private void disableSelenoid() {
+        Configuration.remote = null;
+        Configuration.fileDownload = FileDownloadMode.HTTPGET;  // setting default value
+        Configuration.downloadsFolder = "build/downloads";
+    }
+
+
 }
