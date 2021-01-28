@@ -53,34 +53,35 @@ public class FileDownloadTest {
     @Test
     void thisWorks() throws IOException, InterruptedException {
         disableSelenoid();
-        oneDownload(); // passes
+        twoDownloads(); // passes
     }
 
     @Test
     void thisAlsoWorks() throws IOException, InterruptedException {
         disableSelenoid();
-        twoDownloads(); // passes
+        threeDownloads(); // passes
     }
 
     @Test
     void thisDoesntWork() throws IOException, InterruptedException {
         enableSelenoid();
-        oneDownload(); // this will end with java.lang.AssertionError: Expected size:<1> but was:<0>
+        twoDownloads(); // java.lang.AssertionError: Expected size:<2> but was:<1> in:
 
     }
 
     @Test
     void thisAlsoDoesntWork() throws IOException, InterruptedException {
         enableSelenoid();
-        twoDownloads(); // java.io.FileNotFoundException: Failed to download file {#navigable} in 4000 ms.
+        threeDownloads(); // java.io.FileNotFoundException: Failed to download file {#navigable} in 4000 ms.
     }
 
-    void oneDownload() throws IOException, InterruptedException {
+    void twoDownloads() throws IOException, InterruptedException {
 
         Selenide.open("");
         title.shouldHave(text("This is freshly opened page"));
 
         downloadable.click(); // this triggers downloading
+        downloadable.download(); // this triggers downloading as well
         title.shouldHave(text("This is freshly opened page")); // we're still on the same page
 
         navigable.click();  // this triggers navigating
@@ -90,16 +91,17 @@ public class FileDownloadTest {
                 .filter(s -> !s.isEmpty())
                 .collect(Collectors.toList());
 
-        // we expect 1 file to be downloaded
-        assertThat(downloadedFiles).hasSize(1);
+        // we expect 2 files to be downloaded: via downloadable.click() and downloadable.download()
+        assertThat(downloadedFiles).hasSize(2);
     }
 
-    void twoDownloads() throws IOException, InterruptedException {
+    void threeDownloads() throws IOException, InterruptedException {
 
         Selenide.open("");
         title.shouldHave(text("This is freshly opened page"));
 
         downloadable.click(); // this triggers downloading
+        downloadable.download(); // this triggers downloading as well
         title.shouldHave(text("This is freshly opened page")); // we're still on the same page
 
         navigable.download(); // this triggers downloading, NOTE: this is navigable link!
@@ -112,8 +114,8 @@ public class FileDownloadTest {
                 .filter(s -> !s.isEmpty())
                 .collect(Collectors.toList());
 
-        // we expect 2 files to be downloaded, one via downloadable.click(), the other via navigable.download()
-        assertThat(downloadedFiles).hasSize(2);
+        // we expect 3 files to be downloaded, one via downloadable.click(), other via downloadable.download() and the last via navigable.download()
+        assertThat(downloadedFiles).hasSize(3);
     }
 
     private void enableSelenoid() {
